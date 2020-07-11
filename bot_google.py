@@ -20,19 +20,19 @@ def menu_keyboard():
     )
     keyboard.row(
         telebot.types.KeyboardButton('help'),
-        telebot.types.KeyboardButton('theory')
+        telebot.types.KeyboardButton('theory'),
+        telebot.types.KeyboardButton('Пока, друг!')
     )
     return keyboard
 
-def menu_button():
-    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=1)
+def menu_button(*args):
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
     keyboard.add(telebot.types.KeyboardButton('Меню'))
     return keyboard
 
 def pass_button():
-    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=1)
-    keyboard.add(telebot.types.KeyboardButton('Пропустить'))
-    keyboard.add(telebot.types.KeyboardButton('В меню'))
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    keyboard.add(telebot.types.KeyboardButton('Пропустить'), telebot.types.KeyboardButton('В меню'))
     return keyboard
 
 @bot.message_handler(content_types=['audio', 'photo', 'voice', 'video', 'document', 'text', 'location', 'contact', 'sticker'])
@@ -48,7 +48,7 @@ def menu(message, type=None):
         elif type=='back':
             texting='Ага, забыли, что дальше делаем?'
         bot.send_message(message.from_user.id,
-        texting, reply_markup=keyboard)
+                            texting, reply_markup=keyboard)
         bot.register_next_step_handler(message, next_action)
 
 def next_action(message):
@@ -62,6 +62,8 @@ def next_action(message):
         read_command(message)
     elif message.text == 'edit':
         edit_command(message)
+    elif message.text == 'schedule':
+        schedule_command(message)
     elif message.text == 'delete':
         delete_command(message)
     elif message.text == 'today':
@@ -198,65 +200,72 @@ def read_command(message):
     all_themes=''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes+='{} - {}\n'.format(key,value)
-    keyboard=menu_button()
-    keyboard.add(telebot.types.KeyboardButton('1000'))
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    keyboard.add(telebot.types.KeyboardButton('Всё'), telebot.types.KeyboardButton('Меню'))
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n'+ all_themes)
-    bot.send_message(message.chat.id, 'Введи, пожалуйста, номер темы, либо нажми 1000, если нужно вернуть все темы с вопросами',
+    bot.send_message(message.chat.id, 'Введи, пожалуйста, номер темы, либо нажми Всё, если нужно вернуть все темы с вопросами',
                      reply_markup=keyboard)
     bot.register_next_step_handler(message, read_what_return)
 
 def read_what_return(message):
     if to_menu(message):
         return
-    keyboard = menu_button()
-    try:
-        theme_id=int(message.text)
-
-        if theme_id==1000:
-            i=0
-            for key, value in backend.read_theme(message.from_user.id, 3).items():
-                if i==0:
-                    bot.send_message(message.chat.id, 'Вот все что мы с тобой повторяем\n' + '{}\n{}'. format(key,value))
-                else:
-                    bot.send_message(message.chat.id, '{}:\n{}'.format(key, value))
-                i+=1
-            bot.send_message(message.chat.id, 'Когда закончишь, нажми на кнопку Меню!', reply_markup=keyboard)
-        else:
-            try:
-                theme=backend.read_theme(message.from_user.id, 2, theme_id)[0]
-                question=backend.read_theme(message.from_user.id, 2, theme_id)[1]
-                keyboard.row(telebot.types.KeyboardButton('Да'))
-                bot.send_message(message.chat.id, 'Вот вопросы по теме {}:\n{}'.format(theme, question))
-                bot.send_message(message.chat.id, 'Если нужна теория, то нажми "Да"', reply_markup=keyboard)
-                bot.register_next_step_handler(message, read_final, theme_id)
-            except:
-                bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз')
-                bot.register_next_step_handler(message, try_again, read_what_return)
-    except:
-        bot.send_message(message.chat.id, 'Цифрой, пожалуйста', reply_markup=keyboard)
-        bot.register_next_step_handler(message, try_again, read_what_return)
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    theme_id = message.text
+    if theme_id=='Всё':
+        keyboard.add(telebot.types.KeyboardButton('Меню'))
+        i=0
+        for key, value in backend.read_theme(message.from_user.id, 3).items():
+            if i==0:
+                bot.send_message(message.chat.id, 'Вот все что мы с тобой повторяем\n' + '{}\n{}'. format(key,value))
+            else:
+                bot.send_message(message.chat.id, '{}:\n{}'.format(key, value))
+            i+=1
+        bot.send_message(message.chat.id, 'Когда закончишь, нажми на кнопку Меню!', reply_markup=keyboard)
+    else:
+        try:
+            theme_id = int(message.text)
+        except:
+            keyboard.add(telebot.types.KeyboardButton('Меню'))
+            bot.send_message(message.chat.id, 'Мы же договаривались, что нужна цифра!\nПопробуй еще разок, пожалуйста',
+                             reply_markup=keyboard)
+            bot.register_next_step_handler(message, try_again, read_what_return)
+        try:
+            keyboard.add(telebot.types.KeyboardButton('Да!'), telebot.types.KeyboardButton('Меню'))
+            theme=backend.read_theme(message.from_user.id, 2, theme_id)[0]
+            question=backend.read_theme(message.from_user.id, 2, theme_id)[1]
+            bot.send_message(message.chat.id, 'Вот вопросы по теме {}:\n{}'.format(theme, question))
+            bot.send_message(message.chat.id, 'Если нужна теория, то нажми "Да"', reply_markup=keyboard)
+            bot.register_next_step_handler(message, read_final, theme_id)
+        except:
+            keyboard.add(telebot.types.KeyboardButton('Меню'))
+            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз', reply_markup=keyboard)
+            bot.register_next_step_handler(message, try_again, read_what_return)
 
 def read_final(message, theme_id):
     if to_menu(message):
         return
-    elif message.text=='Да':
+    elif message.text=='Да!':
         theme = backend.read_theme(message.from_user.id, 2, theme_id)[0]
         theory = backend.read_theme(message.from_user.id, 2, theme_id)[1]
         bot.send_message(message.chat.id, 'Вот теория по теме {}:\n{}'.format(theme, theory))
         menu(message, 'circle')
 
 
-@bot.message_handler(commands=['schedule'])
+
 def schedule_command(message):
     all_themes = ''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes += '{} - {}\n'.format(key, value)
-
+    keyboard=menu_button()
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n' + all_themes)
-    bot.send_message(message.chat.id, 'По какой теме прислать расписание? Введи номер')
+    bot.send_message(message.chat.id, 'По какой теме прислать расписание? Введи номер', reply_markup=keyboard)
     bot.register_next_step_handler(message, schedule_return)
 
 def schedule_return(message):
+    if to_menu(message):
+        return
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
     try:
         theme_id=int(message.text)
 
@@ -267,34 +276,39 @@ def schedule_return(message):
             for x in schedule:
                 normal_dates+=x.strftime("%d-%m-%Y") + '\n'
             bot.send_message(message.chat.id, 'Вот когда мы будем повторять тему {}:\n{}'.format(theme, normal_dates))
+            menu(message, 'circle')
         except:
-            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз')
+            keyboard.add(telebot.types.KeyboardButton('Меню'))
+            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз', reply_markup=keyboard)
             bot.register_next_step_handler(message, try_again, schedule_return)
 
     except:
-        bot.send_message(message.chat.id, 'Цифрой, пожалуйста')
+        keyboard.add(telebot.types.KeyboardButton('Меню'))
+        bot.send_message(message.chat.id, 'Цифрой, пожалуйста', reply_markup=keyboard)
         bot.register_next_step_handler(message, try_again, schedule_return)
 
-@bot.message_handler(commands=['edit'])
 def edit_command(message):
     all_themes = ''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes += '{} - {}\n'.format(key, value)
-
+    keyboard = menu_button()
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n' + all_themes)
-    bot.send_message(message.chat.id, 'Что редактировать будем? Введи номер темы')
+    bot.send_message(message.chat.id, 'Что редактировать будем? Введи номер темы',reply_markup=keyboard)
     bot.register_next_step_handler(message, edit_theme)
 
 def edit_theme(message):
+    if to_menu(message):
+        return
+    keyboard = pass_button()
     try:
         theme=int(message.text)
         try:
             current_info=backend.get_theme(message.from_user.id, theme)
-            bot.send_message(message.chat.id, 'Введи новое название для темы {}'.format(current_info['theme']))
-            #добавить кнопку Пропустить
+            bot.send_message(message.chat.id, 'Введи новое название для темы {}'.format(current_info['theme']),
+                             reply_markup=keyboard)
             bot.register_next_step_handler(message, edit_questions, current_info)
         except:
-            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз')
+            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз', reply_markup=keyboard)
             bot.register_next_step_handler(message, try_again, edit_theme)
 
     except:
@@ -302,76 +316,90 @@ def edit_theme(message):
         bot.register_next_step_handler(message, try_again, edit_theme)
 
 def edit_questions(message, current_info):
-    current_info['theme']=message.text
-    bot.send_message(message.chat.id, 'Так, тему исправили.\n' +
+    if to_menu(message):
+        return
+    if message.text!='Пропустить' :
+        current_info['theme']=message.text
+    bot.send_message(message.chat.id, 'Так, c темой разобрались.\n' +
         'Вот какие вопросы к ней у нас были раньше\n' +
         '{}'.format(current_info['questions']))
-    bot.send_message(message.chat.id, 'Теперь введи отредактированный текст вопросов')
-    # добавить кнопку Пропустить
+
+    keyboard=pass_button()
+    bot.send_message(message.chat.id, 'Теперь введи отредактированный текст вопросов', reply_markup=keyboard)
     bot.register_next_step_handler(message, edit_theory, current_info)
 
 def edit_theory(message, current_info):
-    current_info['questions'] = message.text
+    if to_menu(message):
+        return
+    if message.text!='Пропустить' :
+        current_info['questions'] = message.text
     bot.send_message(message.chat.id, 'Покончили с вопросами, теперь давай ответы.\n' +
                      'Вот, что мы сохранили по теории\n' +
                      '{}'.format(current_info['theory']))
-    bot.send_message(message.chat.id, 'Теперь пришли мне новый вариант')
-    # добавить кнопку Пропустить
+    keyboard = pass_button()
+    bot.send_message(message.chat.id, 'Теперь пришли мне новый вариант', reply_markup=keyboard)
     bot.register_next_step_handler(message, edit_final, current_info)
 
 def edit_final(message, current_info):
-    current_info['theory'] = message.text
+    if to_menu(message):
+        return
+    if message.text!='Пропустить' :
+        current_info['theory'] = message.text
     backend.edit_theme(**current_info)
     bot.send_message(message.chat.id, 'Я все сохранил, честно-честно!')
+    menu(message, 'circle')
 
-@bot.message_handler(commands=['delete'])
 def delete_command(message):
     all_themes = ''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes += '{} - {}\n'.format(key, value)
-
+    keyboard=menu_button()
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n' + all_themes)
-    bot.send_message(message.chat.id, 'Кто лишний? Введи номер темы\n' + 'Только подумой хорошенько, восстанавливать не буду! Введи Нет, если передумал')
+    bot.send_message(message.chat.id, 'Кто лишний? Введи номер темы\n' +
+                     'Только подумой хорошенько, восстанавливать не буду! Нажми Меню, если передумал', reply_markup=keyboard)
     bot.register_next_step_handler(message, delete_theme)
 
 def delete_theme(message):
-    if message.text=='Нет':
-        bot.send_message(message.chat.id, 'Ладно, забыли!')
+    if to_menu(message):
         return
-
+    keyboard = menu_button()
     try:
         theme=int(message.text)
         try:
             backend.delete_theme(message.from_user.id, theme)
             bot.send_message(message.chat.id, 'Ну все, прощай бесполезная тема!')
-            #добавить кнопку меню
+            menu(message, 'circle')
 
         except:
-            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз')
+            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз', reply_markup=keyboard)
             bot.register_next_step_handler(message, try_again, edit_theme)
 
     except:
-        bot.send_message(message.chat.id, 'Цифрой, пожалуйста')
+        bot.send_message(message.chat.id, 'Цифрой, пожалуйста', reply_markup=keyboard)
         bot.register_next_step_handler(message, try_again, edit_theme)
 
-@bot.message_handler(commands=['today'])
 def today_command(message):
     today=backend.reminder(message.from_user.id)
     if len(today)==0:
         bot.send_message(message.chat.id, 'Нечего повторять! Приходи завтра!')
         return
     today_str=''
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    keyboard.add(telebot.types.KeyboardButton('Вопросы'), telebot.types.KeyboardButton('Меню'))
     for s in today.keys():
         today_str+= s + '\n'
     bot.send_message(message.chat.id, 'Вот темы, которые мы будем сегодня повторять:\n' + today_str )
-    bot.send_message(message.chat.id, 'Если готов к вопросам, то пришли Да')
+    bot.send_message(message.chat.id, 'Если готов к вопросам, то нажми на кнопку Вопросы', reply_markup=keyboard)
     bot.register_next_step_handler(message, today_questions, today)
 
 def today_questions(message, today):
-    if message.text=='Да':
+    if to_menu(message):
+        return
+    if message.text=='Вопросы':
         bot.send_message(message.chat.id, 'Отлично, а вот и они!')
         for k, v in today.items():
             bot.send_message(message.chat.id, '{}:\n{}'.format(k,v))
+        menu(message, 'circle')
     else:
         bot.send_message(message.chat.id, 'Ну как хочешь!')
 

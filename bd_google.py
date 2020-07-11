@@ -126,11 +126,15 @@ class Database():
     def reminder(self, user_id):
         today = datetime.datetime.now()
         day = datetime.timedelta(0.5)
-        user_schedule = Database.all_themes(self, user_id)[1]
-        user_schedule['send_at']=pd.to_datetime(user_schedule['send_at'])
+        day2 = datetime.timedelta(1)
         user_data = Database.all_themes(self, user_id)[0]
-        send_today = user_schedule[user_schedule['send_at'] - today < day]
+        user_schedule = Database.all_themes(self, user_id)[1]
+        print(user_schedule)
+        user_schedule['send_at']=pd.to_datetime(user_schedule['send_at'])
+        send_today = user_schedule[abs(user_schedule['send_at'] - today) < day]
+        print(send_today)
         themes_for_today = user_data[user_data['theme'].isin(send_today['theme'])]
+        print (themes_for_today)
         print('THERE ARE THEMES FOR TODAY, LORD - {}'.format(dict(zip(themes_for_today['theme'], themes_for_today['questions']))))
         return dict(zip(themes_for_today['theme'], themes_for_today['questions']))
 
@@ -139,7 +143,7 @@ if __name__ == "__main__":
     Database.spread=Spread('bd_test')
 
     t = Database()
-    t.add_theme(1, 'ducks', 'what ducks?', 'aaa, this ducks', '1-3-5-30')
+    t.add_theme(1, 'ducks', 'what ducks?', 'aaa, this ducks', '0-3-5-30')
     t.add_theme(2, 'dementors', 'is this real?', 'this shit is real', '10-14-20-100')
     t.all_themes(1)
     t.get_theme(1,1)
@@ -149,11 +153,11 @@ if __name__ == "__main__":
     print(t.read_schedule(1, 1, 1))
     print(t.read_schedule(1, 2))
     t.edit_theme(1, 1, 'zzzzz', 'yoyoy', 'fffffffff')
-    print(t.read_schedule(1,1,1)[0])
+    #print(t.read_schedule(1,1,1)[0])
+    t.reminder(1)
+    #print(t.reminder(1), len(t.reminder(1)))
     t.delete_theme(1, 1)
     t.delete_theme(2,1)
-    t.reminder(1)
-    print(t.reminder(1), len(t.reminder(1)))
 
     # df3=pd.read_excel(test_schedule)
     # df4=pd.read_excel(test_theory)
