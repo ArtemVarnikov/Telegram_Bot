@@ -126,15 +126,11 @@ class Database():
     def reminder(self, user_id):
         today = datetime.datetime.now()
         day = datetime.timedelta(0.5)
-        day2 = datetime.timedelta(1)
         user_data = Database.all_themes(self, user_id)[0]
         user_schedule = Database.all_themes(self, user_id)[1]
-        print(user_schedule)
         user_schedule['send_at']=pd.to_datetime(user_schedule['send_at'])
         send_today = user_schedule[abs(user_schedule['send_at'] - today) < day]
-        print(send_today)
         themes_for_today = user_data[user_data['theme'].isin(send_today['theme'])]
-        print (themes_for_today)
         print('THERE ARE THEMES FOR TODAY, LORD - {}'.format(dict(zip(themes_for_today['theme'], themes_for_today['questions']))))
         return dict(zip(themes_for_today['theme'], themes_for_today['questions']))
 

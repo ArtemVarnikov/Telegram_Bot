@@ -1,6 +1,7 @@
 import telebot
 import bd_google
 import theory
+import time
 
 backend= bd_google.Database()
 
@@ -35,14 +36,32 @@ def pass_button():
     keyboard.add(telebot.types.KeyboardButton('Пропустить'), telebot.types.KeyboardButton('В меню'))
     return keyboard
 
+def printing_func():
+    bot.send_chat_action(user_id, 'typing')
+    time.sleep(1)
+
+def try_again(message, func): #helper method
+    '''Функция, которая обрабатывает некорректный ввод пользователя'''
+    func(message)
+
+def to_menu(message): #helper method
+    '''Функция, которая обрабатывает некорректный ввод пользователя'''
+    if message.text == 'В меню' or message.text == 'Меню':
+        menu(message, type='back')
+        return True
+
+
 @bot.message_handler(content_types=['audio', 'photo', 'voice', 'video', 'document', 'text', 'location', 'contact', 'sticker'])
 def menu(message, type=None):
+    global user_id
+    user_id=message.chat.id
     if message.text=='/start':
         start(message)
     else:
+        printing_func()
         keyboard=menu_keyboard()
         if type==None:
-            texting='Выбери, пожалуйста, пункт из меню'
+            texting='Привет!\nВыбери, пожалуйста, пункт из меню'
         elif type=='circle':
             texting='Продолжаем?'
         elif type=='back':
@@ -73,13 +92,15 @@ def next_action(message):
         return
     else:
         keyboard = menu_keyboard()
+        printing_func()
         bot.send_message(message.from_user.id,
-            'На такое я пока еще не могу отреагировать как следует, поэтому выбери что-то из меню, будь добр)', reply_markup=keyboard)
+            'Мой друг, я не волшебник, я только учусь.\nПоэтому выбери что-то из меню, будь добр)', reply_markup=keyboard)
         bot.register_next_step_handler(message, next_action)
 
 
 def start(message):
     keyboard=menu_keyboard()
+    printing_func()
     bot.send_message(message.from_user.id,
 'Привет!\nЭтот бот предназназначен для'+
 'использования техники интервальных повторений (spaced repetitions).\n'+
@@ -88,6 +109,7 @@ def start(message):
 
 
 def help_command(message):
+    printing_func()
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.add(
         telebot.types.InlineKeyboardButton(
@@ -107,6 +129,7 @@ def help_command(message):
 
 
 def theory_command(message):
+    printing_func()
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.add(telebot.types.InlineKeyboardButton('Кривая забывания Эббингауза', url=theory.ebbie  )    )
     keyboard.add(telebot.types.InlineKeyboardButton('Активное вспоминание (eng)', url=theory.rec_eng))
@@ -117,18 +140,9 @@ def theory_command(message):
         reply_markup=keyboard
     )
 
-def try_again(message, func): #helper method
-    '''Функция, которая обрабатывает некорректный ввод пользователя'''
-    func(message)
-
-def to_menu(message): #helper method
-    '''Функция, которая обрабатывает некорректный ввод пользователя'''
-    if message.text == 'В меню' or message.text == 'Меню':
-        menu(message, type='back')
-        return True
-
 
 def add_command(message):
+    printing_func()
     bot.send_message(
         message.chat.id,
         'Давай добавим новую тему для интервальных повторений!\n' +
@@ -139,6 +153,7 @@ def add_command(message):
     bot.register_next_step_handler(message, add_theme, new_theme)
 
 def add_theme(message, new_theme):
+    printing_func()
     new_theme['theme'] = message.text
     keyboard=pass_button()
     bot.send_message(
@@ -152,6 +167,7 @@ def add_theme(message, new_theme):
 def add_questions(message, new_theme):
     if to_menu(message):
         return
+    printing_func()
     new_theme['questions'] = message.text
     keyboard=pass_button()
     bot.send_message(
@@ -166,6 +182,7 @@ def add_questions(message, new_theme):
 def add_schedule(message, new_theme):
     if to_menu(message):
         return
+    printing_func()
     keyboard=pass_button()
     new_theme['theory'] = message.text
     bot.send_message(
@@ -182,7 +199,7 @@ def add_schedule(message, new_theme):
 def add_final(message, new_theme):
     if to_menu(message):
         return
-
+    printing_func()
     if message.text == 'Пропустить':
         new_theme['schedule']='1-3-7-14-30'
     else:
@@ -197,6 +214,7 @@ def add_final(message, new_theme):
 
 
 def read_command(message):
+    printing_func()
     all_themes=''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes+='{} - {}\n'.format(key,value)
@@ -210,6 +228,7 @@ def read_command(message):
 def read_what_return(message):
     if to_menu(message):
         return
+    printing_func()
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
     theme_id = message.text
     if theme_id=='Всё':
@@ -246,6 +265,7 @@ def read_final(message, theme_id):
     if to_menu(message):
         return
     elif message.text=='Да!':
+        printing_func()
         theme = backend.read_theme(message.from_user.id, 2, theme_id)[0]
         theory = backend.read_theme(message.from_user.id, 2, theme_id)[1]
         bot.send_message(message.chat.id, 'Вот теория по теме {}:\n{}'.format(theme, theory))
@@ -254,6 +274,7 @@ def read_final(message, theme_id):
 
 
 def schedule_command(message):
+    printing_func()
     all_themes = ''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes += '{} - {}\n'.format(key, value)
@@ -265,6 +286,7 @@ def schedule_command(message):
 def schedule_return(message):
     if to_menu(message):
         return
+    printing_func()
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
     try:
         theme_id=int(message.text)
@@ -288,6 +310,7 @@ def schedule_return(message):
         bot.register_next_step_handler(message, try_again, schedule_return)
 
 def edit_command(message):
+    printing_func()
     all_themes = ''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes += '{} - {}\n'.format(key, value)
@@ -299,6 +322,7 @@ def edit_command(message):
 def edit_theme(message):
     if to_menu(message):
         return
+    printing_func()
     keyboard = pass_button()
     try:
         theme=int(message.text)
@@ -318,6 +342,7 @@ def edit_theme(message):
 def edit_questions(message, current_info):
     if to_menu(message):
         return
+    printing_func()
     if message.text!='Пропустить' :
         current_info['theme']=message.text
     bot.send_message(message.chat.id, 'Так, c темой разобрались.\n' +
@@ -331,6 +356,7 @@ def edit_questions(message, current_info):
 def edit_theory(message, current_info):
     if to_menu(message):
         return
+    printing_func()
     if message.text!='Пропустить' :
         current_info['questions'] = message.text
     bot.send_message(message.chat.id, 'Покончили с вопросами, теперь давай ответы.\n' +
@@ -343,6 +369,7 @@ def edit_theory(message, current_info):
 def edit_final(message, current_info):
     if to_menu(message):
         return
+    printing_func()
     if message.text!='Пропустить' :
         current_info['theory'] = message.text
     backend.edit_theme(**current_info)
@@ -350,6 +377,7 @@ def edit_final(message, current_info):
     menu(message, 'circle')
 
 def delete_command(message):
+    printing_func()
     all_themes = ''
     for key, value in backend.all_themes(message.from_user.id)[2].items():
         all_themes += '{} - {}\n'.format(key, value)
@@ -362,6 +390,7 @@ def delete_command(message):
 def delete_theme(message):
     if to_menu(message):
         return
+    printing_func()
     keyboard = menu_button()
     try:
         theme=int(message.text)
@@ -379,6 +408,7 @@ def delete_theme(message):
         bot.register_next_step_handler(message, try_again, edit_theme)
 
 def today_command(message):
+    printing_func()
     today=backend.reminder(message.from_user.id)
     if len(today)==0:
         bot.send_message(message.chat.id, 'Нечего повторять! Приходи завтра!')
@@ -395,6 +425,7 @@ def today_command(message):
 def today_questions(message, today):
     if to_menu(message):
         return
+    printing_func()
     if message.text=='Вопросы':
         bot.send_message(message.chat.id, 'Отлично, а вот и они!')
         for k, v in today.items():
@@ -402,6 +433,7 @@ def today_questions(message, today):
         menu(message, 'circle')
     else:
         bot.send_message(message.chat.id, 'Ну как хочешь!')
+        menu(message, 'circle')
 
 
 
