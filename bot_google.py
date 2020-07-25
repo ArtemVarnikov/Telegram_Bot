@@ -3,6 +3,7 @@ import bd_google
 import theory
 import time
 import schedule
+import threading
 
 backend= bd_google.Database()
 
@@ -54,7 +55,7 @@ def to_menu(message): #helper method
         return True
 
 
-@bot.message_handler(content_types=['audio', 'photo', 'voice', 'video', 'document', 'text', 'location', 'contact', 'sticker'])
+@bot.message_handler(regexp='[^Да]')
 def menu(message, type=None):
     global user_id
     user_id=message.chat.id
@@ -99,6 +100,7 @@ def next_action(message):
         bot.send_message(message.from_user.id,
             'Мой друг, я не волшебник, я только учусь.\nПоэтому выбери что-то из меню, будь добр)', reply_markup=keyboard)
         bot.register_next_step_handler(message, next_action)
+        return
 
 
 def start(message):
@@ -410,6 +412,16 @@ def delete_theme(message):
         bot.send_message(message.chat.id, 'Цифрой, пожалуйста', reply_markup=keyboard)
         bot.register_next_step_handler(message, try_again, edit_theme)
 
+def cron_func():
+    print ('Croniiiiee')
+    userlist = backend.get_users()
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    keyboard.add(telebot.types.KeyboardButton('Да'), telebot.types.KeyboardButton('Нет'))
+    for user in userlist:
+        bot.send_message(user, 'Время повторения! Ты готов?', reply_markup=keyboard)
+
+
+@bot.message_handler(regexp='Да')
 def today_command(message):
     if to_menu(message):
         return
@@ -440,17 +452,24 @@ def today_questions(message, today):
         bot.send_message(message.chat.id, 'Ну как хочешь!')
         menu(message, 'circle')
 
-def cron_remainder():
-    print ('Croniiiiee')
-    userlist = backend.get_users()
-    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
-    keyboard.add(telebot.types.KeyboardButton('Да'), telebot.types.KeyboardButton('Нет'))
-    for user in userlist:
-        bot.send_message(user, 'Время повторения! Ты готов?', reply_markup=keyboard)
-        bot.register_next_step_handler(message, today_command)
 
+def runBot():
+    bot.polling(none_stop=True, interval=0)
 
-bot.polling(none_stop=True, interval=0)
+def runSchedulers():
+    schedule.every().day.at('04:00').do(backend.archieve).tag(backend.archieve.__name__)
+    schedule.every(10).seconds.do(cron_func).tag(cron_func.__name__)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+if __name__ == "__main__":
+    t1 = threading.Thread(target=runBot)
+    t2 = threading.Thread(target=runSchedulers)
+    # starting thread 1
+    t1.start()
+    # starting thread 2
+    t2.start()
 
 
 

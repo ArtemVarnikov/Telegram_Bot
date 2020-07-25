@@ -3,8 +3,6 @@ import datetime
 import pandas as pd
 import re
 from gspread_pandas import Spread, Client
-import schedule
-import time
 
 
 pd.set_option('mode.chained_assignment', None)
@@ -38,7 +36,7 @@ class Database():
         return user_data, user_schedule, themes
 
     def get_users(self):
-        return self.data['user_id'].tolist()
+        return self.data['user_id'].unique().tolist()
 
     def get_theme(self, user_id, theme_id):
         user_data = Database.get_data(self,user_id)[0]
