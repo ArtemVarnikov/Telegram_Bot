@@ -1,11 +1,11 @@
 import telebot
-import bd_google
+import bd_sql
 import theory
 import time
 import schedule
 import threading
 
-backend= bd_google.Database()
+backend= bd_sql.Database()
 
 
 bot = telebot.TeleBot('995622302:AAHzpN0DOglWKCx7lPgrCpWWml_bxgKIs10')
