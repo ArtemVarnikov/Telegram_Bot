@@ -2,41 +2,54 @@
 import datetime
 import pandas as pd
 import re
-from gspread_pandas import Spread, Client
+import sqlite3
 
 
 pd.set_option('mode.chained_assignment', None)
 
 class Database():
-    spread=Spread('bd_google')
-    theory = 'theory'
-    schedule = 'schedule'
+    users= 'User'
+    themes = 'Themes'
+    schedules = 'Schedule'
 
-    def __init__(self):
-        self.data = Database.spread.sheet_to_df(index=None, header_rows=1,
-                      start_row=1, unformatted_columns=None, formula_columns=None, sheet=Database.theory)
-        self.schedule = Database.spread.sheet_to_df(index=None, header_rows=1,
-                      start_row=1, unformatted_columns=None, formula_columns=None, sheet=Database.schedule)
+    def make_query(self, db_name, query, type=None, table_name = None):
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+        cursor.execute(query)
+        if type == 'reading':
+            res = cursor.fetchall()
+        elif type == 'insert':
+            conn.commit()
+            res = print('Данные добавлены в {}'.format(table_name))
+        elif type == 'delete':
+            conn.commit()
+            res = print('Данные удалены из {}'.format(table_name))
+        elif type == 'edit':
+            conn.commit()
+            res = print('Данные в {} изменены'.format(table_name))
+        conn.close()
+        return res
+
+    def __init__(self, db_name):
+        self.db_name = db_name
 
     def save_and_reopen(self):  # helper method
-        Database.spread.df_to_sheet(self.data, index=False, sheet=Database.theory)
-        Database.spread.df_to_sheet(self.schedule, index=False, sheet=Database.schedule)
-        self.data = Database.spread.sheet_to_df(index=None, header_rows=1,
-                                                start_row=1, unformatted_columns=None, formula_columns=None,
-                                                sheet=Database.theory)
-        self.schedule = Database.spread.sheet_to_df(index=None, header_rows=1,
-                                                    start_row=1, unformatted_columns=None, formula_columns=None,
-                                                    sheet=Database.schedule)
+        pass
 
     def get_data(self, user_id):
-        user_data=self.data[self.data['user_id']==str(user_id)]
-        user_schedule=self.schedule[self.schedule['user_id']==str(user_id)]
-        user_themes=user_data['theme'].tolist()
-        themes={ i+1: x for i, x in enumerate(user_themes)}
+        user_data= Database.make_query(self, self.db_name,
+                                       'Select * from {} where user_id = {}'.format(Database.users, user_id),
+                                       'reading')
+        user_schedule=Database.make_query(self, self.db_name,
+                                       'Select * from {} where user_id = {}'.format(Database.schedules, user_id),
+                                          'reading')
+     #   user_themes=user_data['theme'].tolist()
+      #  themes={ i+1: x for i, x in enumerate(user_themes)}
         return user_data, user_schedule, themes
 
     def get_users(self):
-        return self.data['user_id'].unique().tolist()
+        return Database.make_query(self, self.db_name,
+                                       'Select user_id from {}'.format(Database.users), 'reading')
 
     def get_theme(self, user_id, theme_id):
         user_data = Database.get_data(self,user_id)[0]
@@ -50,12 +63,20 @@ class Database():
 
     def add_theme(self, user_id, theme, questions, theory, schedule):
         schedule=re.sub('[^\d]', '-', schedule)
-        self.data.loc[len(self.data)] = [int(round(user_id,0)), datetime.datetime.now(),
-                                         theme, questions, theory, schedule]
+        theme_id = Database.make_query(self, self.db_name,
+                                       'select coalesce(max(theme_id) + 1, 1) from {0} where user_id = {1}'.format(Database.themes, user_id), 'reading')[0][0]
+        add_theme_query = '''
+            INSERT INTO {0} (user_id, created_at, theme_id, theme, questions, theory, schedule) VALUES 
+                ({1}, datetime(date('now')), {2}, '{3}','{4}', '{5}', '{6}')
+            '''.format(Database.themes, user_id, theme_id, theme, questions, theory, schedule)
+
+        Database.make_query(self, self.db_name, add_theme_query,  type='insert', table_name=Database.themes)
         for s in schedule.split('-'):
-            self.schedule.loc[len(self.schedule)] = [int(user_id), datetime.datetime.now(), theme,
-                                                     datetime.datetime.today() + datetime.timedelta(days=int(s))]
-        Database.save_and_reopen(self)
+            add_schedule_query = '''
+            INSERT INTO {0} (user_id, created_at, theme_id, theme, send_at) VALUES 
+            ({1}, datetime(date('now')), {2}, '{3}', date('now', '+{4} days') )
+            '''.format(Database.schedules,user_id, theme_id, theme, int(s))
+            Database.make_query(self, self.db_name, add_schedule_query, type='insert', table_name=Database.schedules)
         print('theme added')
 
     def read_theme(self, user_id, what_needed, theme_id=None):
@@ -142,24 +163,28 @@ class Database():
 
 
 if __name__ == "__main__":
-    Database.spread=Spread('bd_test')
+    Database.users = 'test_user'
+    Database.themes = 'test_themes'
+    Database.schedules = 'test_schedule'
 
-    t = Database()
+    t = Database(r'D:\Downloads\testbd.db')
     t.add_theme(1, 'ducks', 'what ducks?', 'aaa, this ducks', '0-3-5-30')
     t.add_theme(2, 'dementors', 'is this real?', 'this shit is real', '10-14-20-100')
-    t.get_data(1)
-    t.get_theme(1,1)
-    t.read_theme(1, 1, 1)
-    t.read_theme(1, 2, 1)
-    t.read_theme(2, 3)
-    print(t.read_schedule(1, 1, 1))
-    print(t.read_schedule(1, 2))
-    t.edit_theme(1, 1, 'zzzzz', 'yoyoy', 'fffffffff')
-    #print(t.read_schedule(1,1,1)[0])
-    t.reminder(1)
-    #print(t.reminder(1), len(t.reminder(1)))
-    t.delete_theme(1, 1)
-    t.delete_theme(2,1)
+
+
+    # t.get_data(1)
+    # t.get_theme(1,1)
+    # t.read_theme(1, 1, 1)
+    # t.read_theme(1, 2, 1)
+    # t.read_theme(2, 3)
+    # print(t.read_schedule(1, 1, 1))
+    # print(t.read_schedule(1, 2))
+    # t.edit_theme(1, 1, 'zzzzz', 'yoyoy', 'fffffffff')
+    # #print(t.read_schedule(1,1,1)[0])
+    # t.reminder(1)
+    # #print(t.reminder(1), len(t.reminder(1)))
+    # t.delete_theme(1, 1)
+    # t.delete_theme(2,1)
 
     # df3=pd.read_excel(test_schedule)
     # df4=pd.read_excel(test_theory)
