@@ -5,7 +5,7 @@ import time
 import schedule
 import threading
 
-backend= bd_sql.Database()
+backend= bd_sql.Database(r'D:\Downloads\testbd.db')
 
 
 bot = telebot.TeleBot('995622302:AAHzpN0DOglWKCx7lPgrCpWWml_bxgKIs10')
@@ -209,6 +209,7 @@ def add_final(message, new_theme):
         new_theme['schedule']='1-3-7-14-30'
     else:
         new_theme['schedule'] = message.text
+    print(new_theme)
     backend.add_theme(**new_theme)
     bot.send_message(
         message.chat.id,
@@ -458,7 +459,7 @@ def runBot():
 
 def runSchedulers():
     schedule.every().day.at('04:00').do(backend.archieve).tag(backend.archieve.__name__)
-    schedule.every(10).seconds.do(cron_func).tag(cron_func.__name__)
+    schedule.every(1).hour.do(cron_func).tag(cron_func.__name__)
     while True:
         schedule.run_pending()
         time.sleep(1)

@@ -1,21 +1,20 @@
 """BACKEND THING"""
 import datetime
-import pandas as pd
 import re
 import sqlite3
+from datetime import datetime, timedelta, date
 
 
-pd.set_option('mode.chained_assignment', None)
 
 class Database():
-    users= 'User'
-    themes = 'Themes'
-    schedules = 'Schedule'
+    users= 'user'
+    themes = 'themes'
+    schedules = 'schedule'
 
-    def make_query(self, db_name, query, type=None, table_name = None):
+    def make_query(self, db_name, query, params, type=None, table_name = None):
         conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
-        cursor.execute(query)
+        cursor.execute(query, params)
         if type == 'reading':
             res = cursor.fetchall()
         elif type == 'insert':
@@ -33,50 +32,47 @@ class Database():
     def __init__(self, db_name):
         self.db_name = db_name
 
-    def save_and_reopen(self):  # helper method
-        pass
 
     def get_data(self, user_id):
         user_data= Database.make_query(self, self.db_name,
-                                       'Select * from {} where user_id = {}'.format(Database.users, user_id),
-                                       'reading')
+                                       'Select * from user where user_id = ?', params =(user_id,), type= 'reading')
         user_schedule=Database.make_query(self, self.db_name,
-                                       'Select * from {} where user_id = {}'.format(Database.schedules, user_id),
-                                          'reading')
-     #   user_themes=user_data['theme'].tolist()
-      #  themes={ i+1: x for i, x in enumerate(user_themes)}
-        return user_data, user_schedule, themes
+                                       'Select * from schedule where user_id = ?',  params= (user_id,),type=  'reading')
+        return user_data, user_schedule
 
     def get_users(self):
         return Database.make_query(self, self.db_name,
-                                       'Select user_id from {}'.format(Database.users), 'reading')
+                                       'Select user_id from user',  type ='reading')
 
     def get_theme(self, user_id, theme_id):
-        user_data = Database.get_data(self,user_id)[0]
-        themes=Database.get_data(self, user_id)[2]
-        print(user_data, themes, user_data[user_data['theme']==themes[theme_id]])
+        themes=Database.make_query(self, self.db_name,
+                                       'Select * from themes where user_id = ? and theme_id = ? limit 1', (user_id, theme_id),
+                                          'reading')
+        print(themes)
         return {'user_id' : user_id,
                 "theme_id":theme_id,
-                "theme": user_data[user_data['theme']==themes[theme_id]]['theme'].tolist()[0],
-               'questions' : user_data[user_data['theme']==themes[theme_id]]['questions'].tolist()[0],
-               'theory' : user_data[user_data['theme']==themes[theme_id]]['theory'].tolist()[0]}
+                "theme": themes[0][3],
+               'questions' : themes[0][4],
+               'theory' : themes[0][5]}
 
     def add_theme(self, user_id, theme, questions, theory, schedule):
         schedule=re.sub('[^\d]', '-', schedule)
         theme_id = Database.make_query(self, self.db_name,
-                                       'select coalesce(max(theme_id) + 1, 1) from {0} where user_id = {1}'.format(Database.themes, user_id), 'reading')[0][0]
+                                       'select coalesce(max(theme_id) + 1, 1) from themes where user_id = ?', (user_id,), type ='reading')[0][0]
         add_theme_query = '''
-            INSERT INTO {0} (user_id, created_at, theme_id, theme, questions, theory, schedule) VALUES 
-                ({1}, datetime(date('now')), {2}, '{3}','{4}', '{5}', '{6}')
-            '''.format(Database.themes, user_id, theme_id, theme, questions, theory, schedule)
+            INSERT INTO themes (user_id, created_at, theme_id, theme, questions, theory, schedule) VALUES 
+                (?, datetime(date('now')), ?, ?, ?,? , ?)
+            '''
 
-        Database.make_query(self, self.db_name, add_theme_query,  type='insert', table_name=Database.themes)
+        Database.make_query(self, self.db_name, add_theme_query,   (user_id, theme_id,theme, questions, theory, schedule),
+                            type='insert', table_name=Database.themes)
         for s in schedule.split('-'):
             add_schedule_query = '''
-            INSERT INTO {0} (user_id, created_at, theme_id, theme, send_at) VALUES 
-            ({1}, datetime(date('now')), {2}, '{3}', date('now', '+{4} days') )
-            '''.format(Database.schedules,user_id, theme_id, theme, int(s))
-            Database.make_query(self, self.db_name, add_schedule_query, type='insert', table_name=Database.schedules)
+            INSERT INTO schedule (user_id, created_at, theme_id, theme, send_at) VALUES 
+            (?, datetime(date('now')), ?, ?, ? )
+            '''
+            Database.make_query(self, self.db_name, add_schedule_query, (user_id, theme_id, theme, date.isoformat(datetime.date(datetime.now()) + timedelta(days=int(s)))),
+                                type='insert', table_name=Database.schedules)
         print('theme added')
 
     def read_theme(self, user_id, what_needed, theme_id=None):
@@ -168,12 +164,12 @@ if __name__ == "__main__":
     Database.schedules = 'test_schedule'
 
     t = Database(r'D:\Downloads\testbd.db')
-    t.add_theme(1, 'ducks', 'what ducks?', 'aaa, this ducks', '0-3-5-30')
-    t.add_theme(2, 'dementors', 'is this real?', 'this shit is real', '10-14-20-100')
+   # t.add_theme(1, 'ducks', 'what ducks?', 'aaa, this ducks', '0-3-5-30')
+    #t.add_theme(2, 'dementors', 'is this real?', 'this shit is real', '10-14-20-100')
 
 
-    # t.get_data(1)
-    # t.get_theme(1,1)
+    t.get_data(475098368)
+    t.get_theme(475098368,1)
     # t.read_theme(1, 1, 1)
     # t.read_theme(1, 2, 1)
     # t.read_theme(2, 3)
