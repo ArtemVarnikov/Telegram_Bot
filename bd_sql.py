@@ -34,11 +34,11 @@ class Database():
 
 
     def get_data(self, user_id):
-        user_data= Database.make_query(self, self.db_name,
-                                       'Select * from user where user_id = ?', params =(user_id,), type= 'reading')
+        user_themes= Database.make_query(self, self.db_name,
+                                       'Select theme_id, theme, questions, theory from themes where user_id = ?', params =(user_id,), type= 'reading')
         user_schedule=Database.make_query(self, self.db_name,
-                                       'Select * from schedule where user_id = ?',  params= (user_id,),type=  'reading')
-        return user_data, user_schedule
+                                       'Select theme_id, theme, send_at from schedule where user_id = ?',  params= (user_id,),type=  'reading')
+        return user_themes, user_schedule
 
     def get_users(self):
         return Database.make_query(self, self.db_name,
@@ -54,6 +54,11 @@ class Database():
                 "theme": themes[0][3],
                'questions' : themes[0][4],
                'theory' : themes[0][5]}
+
+    def get_theme_schedule(self, user_id, theme_id):
+        theme_schedule=Database.make_query(self, self.db_name,
+                                       'Select send_at from schedule where user_id = ? and theme_id = ?',  params= (user_id, theme_id),type=  'reading')
+        return [x[0] for x in theme_schedule]
 
     def add_theme(self, user_id, theme, questions, theory, schedule):
         schedule=re.sub('[^\d]', '-', schedule)
@@ -81,54 +86,36 @@ class Database():
         2 - теория по теме
         3 - все темы с вопросами
         """
-        user_data = Database.get_data(self, user_id)[0]
-        themes= Database.get_data(self, user_id)[2]
         if what_needed == 1:
-            return user_data[user_data['theme'] == themes[theme_id]]['theme'].tolist()[0],\
-                   user_data[user_data['theme'] == themes[theme_id]]['questions'].tolist()[0]
+            return Database.get_theme(self, user_id, theme_id)['theme'],\
+                   Database.get_theme(self, user_id, theme_id)['questions']
 
         if what_needed == 2:
-            return user_data[user_data['theme'] == themes[theme_id]]['theme'].tolist()[0],\
-                   user_data[user_data['theme'] == themes[theme_id]]['theory'].tolist()[0]
+            return Database.get_theme(self, user_id, theme_id)['theme'], \
+                   Database.get_theme(self, user_id, theme_id)['theory']
 
         if what_needed == 3:
-            return dict(zip(user_data['theme'].tolist(),
-                            user_data['questions'].tolist()))
+            return dict(zip([theme[1] for theme in Database.get_data(self, user_id)[0]],
+                            [theme[2] for theme in Database.get_data(self, user_id)[0]]))
 
-    def read_schedule(self, user_id, what_needed, theme_id=None):
-        """Параметр what_needed
-        1 - расписание по выбранной теме
-        2 - все расписание
+    def read_schedule(self, user_id, theme_id):
         """
-        user_schedule = Database.get_data(self, user_id)[1]
-        themes = Database.get_data(self, user_id)[2]
-
-        if what_needed == 1:
-            return user_schedule[user_schedule['theme']==themes[theme_id]]['theme'].tolist()[0], \
-                  user_schedule[user_schedule['theme']==themes[theme_id]]['send_at'].tolist()
-
-
-        if what_needed == 2:
-            return {'{}:{}'.format(x, y)
-                        for x in user_schedule['theme'].tolist()
-                        for y in user_schedule[user_schedule['theme'] == x]['send_at'].tolist()
-                    }
+        """
+        return Database.get_theme_schedule(self, user_id,theme_id)
 
 
     def edit_theme(self, user_id, theme_id, theme, questions, theory):
-        themes = Database.get_data(self, user_id)[2]
-        user_id=str(user_id)
-        index_d = self.data.index[(self.data['user_id']==user_id) &
-            (self.data['theme'] == themes[theme_id])][0]
-        index_s = self.schedule.index[(self.schedule['user_id'] == user_id) &
-                                  (self.schedule['theme'] == themes[theme_id])]
-        self.data['questions'][index_d] = questions
-        self.data['theory'][index_d] = theory
-        self.data['theme'][index_d] = theme
-        for i in index_s:
-            self.schedule['theme'][i]=theme
-        Database.save_and_reopen(self)
-        print('NEW THEME {} : {} : {}'.format(theme, questions, theory))
+        update_theme_query = '''
+        UPDATE themes
+        set theme = :theme, questions = :questions, theory = :theory
+        where user_id = :user_id and theme_id = :theme_id
+        '''
+        Database.make_query(self, self.db_name, update_theme_query, {'theme' : theme, 'questions' : questions, 'theory' : theory,
+                                                                     'user_id' : user_id, 'theme_id' : theme_id},
+                            type = 'edit', table_name='themes')
+
+        Database.make_query(self, self.db_name, 'update schedule set theme = ? where theme_id = ?', (theme, theme_id), 'edit', 'schedule')
+        print('EDITED THEME {} : {} : {}'.format(theme, questions, theory))
 
     def delete_theme(self, user_id, theme_id):
         themes = Database.get_data(self, user_id)[2]
@@ -175,7 +162,7 @@ if __name__ == "__main__":
     # t.read_theme(2, 3)
     # print(t.read_schedule(1, 1, 1))
     # print(t.read_schedule(1, 2))
-    # t.edit_theme(1, 1, 'zzzzz', 'yoyoy', 'fffffffff')
+    t.edit_theme(1, 1, 'zzzzz', 'yoyoy', 'fffffffff')
     # #print(t.read_schedule(1,1,1)[0])
     # t.reminder(1)
     # #print(t.reminder(1), len(t.reminder(1)))

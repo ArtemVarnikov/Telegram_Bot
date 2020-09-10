@@ -222,11 +222,13 @@ def add_final(message, new_theme):
 def read_command(message):
     printing_func()
     get_data=''
-    for key, value in backend.get_data(message.from_user.id)[2].items():
-        get_data+='{} - {}\n'.format(key,value)
+    print(backend.get_data(message.from_user.id)[0])
+    for theme in backend.get_data(message.from_user.id)[0]:
+        get_data+='{} - {}\n'.format(theme[0],theme[1])
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
     keyboard.add(telebot.types.KeyboardButton('Всё'), telebot.types.KeyboardButton('Меню'))
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n'+ get_data)
+    printing_func()
     bot.send_message(message.chat.id, 'Введи, пожалуйста, номер темы, либо нажми Всё, если нужно вернуть все темы с вопросами',
                      reply_markup=keyboard)
     bot.register_next_step_handler(message, read_what_return)
@@ -257,8 +259,7 @@ def read_what_return(message):
             bot.register_next_step_handler(message, try_again, read_what_return)
         try:
             keyboard.add(telebot.types.KeyboardButton('Да!'), telebot.types.KeyboardButton('Меню'))
-            theme=backend.read_theme(message.from_user.id, 2, theme_id)[0]
-            question=backend.read_theme(message.from_user.id, 2, theme_id)[1]
+            theme, question = backend.read_theme(message.from_user.id, 1, theme_id)
             bot.send_message(message.chat.id, 'Вот вопросы по теме {}:\n{}'.format(theme, question))
             bot.send_message(message.chat.id, 'Если нужна теория, то нажми "Да"', reply_markup=keyboard)
             bot.register_next_step_handler(message, read_final, theme_id)
@@ -272,8 +273,7 @@ def read_final(message, theme_id):
         return
     elif message.text=='Да!':
         printing_func()
-        theme = backend.read_theme(message.from_user.id, 2, theme_id)[0]
-        theory = backend.read_theme(message.from_user.id, 2, theme_id)[1]
+        theme , theory = backend.read_theme(message.from_user.id, 2, theme_id)
         bot.send_message(message.chat.id, 'Вот теория по теме {}:\n{}'.format(theme, theory))
         menu(message, 'circle')
 
@@ -282,10 +282,11 @@ def read_final(message, theme_id):
 def schedule_command(message):
     printing_func()
     get_data = ''
-    for key, value in backend.get_data(message.from_user.id)[2].items():
-        get_data += '{} - {}\n'.format(key, value)
+    for theme in backend.get_data(message.from_user.id)[0]:
+        get_data += '{} - {}\n'.format(theme[0], theme[1])
     keyboard=menu_button()
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n' + get_data)
+    printing_func()
     bot.send_message(message.chat.id, 'По какой теме прислать расписание? Введи номер', reply_markup=keyboard)
     bot.register_next_step_handler(message, schedule_return)
 
@@ -298,12 +299,13 @@ def schedule_return(message):
         theme_id=int(message.text)
 
         try:
-            theme= backend.read_schedule(message.from_user.id, 1, theme_id)[0]
-            schedule = backend.read_schedule(message.from_user.id, 1, theme_id)[1]
+            theme= backend.get_theme(message.from_user.id, theme_id)['theme']
+            schedule = backend.get_theme_schedule(message.from_user.id, theme_id)
             normal_dates= ''
             for x in schedule:
-                normal_dates+=x.strftime("%d-%m-%Y") + '\n'
+                normal_dates += '-'.join(x.split('-')[::-1]) + '\n'
             bot.send_message(message.chat.id, 'Вот когда мы будем повторять тему {}:\n{}'.format(theme, normal_dates))
+            printing_func()
             menu(message, 'circle')
         except:
             keyboard.add(telebot.types.KeyboardButton('Меню'))
@@ -318,10 +320,11 @@ def schedule_return(message):
 def edit_command(message):
     printing_func()
     get_data = ''
-    for key, value in backend.get_data(message.from_user.id)[2].items():
-        get_data += '{} - {}\n'.format(key, value)
+    for theme in backend.get_data(message.from_user.id)[0]:
+        get_data += '{} - {}\n'.format(theme[0], theme[1])
     keyboard = menu_button()
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n' + get_data)
+    printing_func()
     bot.send_message(message.chat.id, 'Что редактировать будем? Введи номер темы',reply_markup=keyboard)
     bot.register_next_step_handler(message, edit_theme)
 
@@ -369,7 +372,9 @@ def edit_theory(message, current_info):
                      'Вот, что мы сохранили по теории\n' +
                      '{}'.format(current_info['theory']))
     keyboard = pass_button()
+    printing_func()
     bot.send_message(message.chat.id, 'Теперь пришли мне новый вариант', reply_markup=keyboard)
+    printing_func()
     bot.register_next_step_handler(message, edit_final, current_info)
 
 def edit_final(message, current_info):
@@ -385,10 +390,11 @@ def edit_final(message, current_info):
 def delete_command(message):
     printing_func()
     get_data = ''
-    for key, value in backend.get_data(message.from_user.id)[2].items():
-        get_data += '{} - {}\n'.format(key, value)
+    for theme in backend.get_data(message.from_user.id)[0]:
+        get_data += '{} - {}\n'.format(theme[0], theme[1])
     keyboard=menu_button()
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n' + get_data)
+    printing_func()
     bot.send_message(message.chat.id, 'Кто лишний? Введи номер темы\n' +
                      'Только подумой хорошенько, восстанавливать не буду! Нажми Меню, если передумал', reply_markup=keyboard)
     bot.register_next_step_handler(message, delete_theme)
