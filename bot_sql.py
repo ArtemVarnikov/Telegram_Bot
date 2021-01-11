@@ -304,7 +304,10 @@ def schedule_return(message):
             normal_dates= ''
             for x in schedule:
                 normal_dates += '-'.join(x.split('-')[::-1]) + '\n'
-            bot.send_message(message.chat.id, 'Вот когда мы будем повторять тему {}:\n{}'.format(theme, normal_dates))
+            if len(normal_dates)== 0:
+                bot.send_message(message.chat.id, 'Эту тему мы уже повторили от и до!')
+            else:
+                bot.send_message(message.chat.id, 'Вот когда мы будем повторять тему {}:\n{}'.format(theme, normal_dates))
             printing_func()
             menu(message, 'circle')
         except:
@@ -419,17 +422,10 @@ def delete_theme(message):
         bot.send_message(message.chat.id, 'Цифрой, пожалуйста', reply_markup=keyboard)
         bot.register_next_step_handler(message, try_again, edit_theme)
 
-def cron_func():
-    print ('Croniiiiee')
-    userlist = backend.get_users()
-    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
-    keyboard.add(telebot.types.KeyboardButton('Да'), telebot.types.KeyboardButton('Нет'))
-    for user in userlist:
-        bot.send_message(user, 'Время повторения! Ты готов?', reply_markup=keyboard)
-
-
 @bot.message_handler(regexp='Да')
 def today_command(message):
+    global user_id
+    user_id = message.chat.id
     if to_menu(message):
         return
     printing_func()
@@ -441,10 +437,13 @@ def today_command(message):
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
     keyboard.add(telebot.types.KeyboardButton('Вопросы'), telebot.types.KeyboardButton('Меню'))
     for s in today.keys():
+        printing_func()
         today_str+= s + '\n'
     bot.send_message(message.chat.id, 'Вот темы, которые мы будем сегодня повторять:\n' + today_str )
+    printing_func()
     bot.send_message(message.chat.id, 'Если готов к вопросам, то нажми на кнопку Вопросы', reply_markup=keyboard)
     bot.register_next_step_handler(message, today_questions, today)
+
 
 def today_questions(message, today):
     if to_menu(message):
@@ -452,20 +451,31 @@ def today_questions(message, today):
     printing_func()
     if message.text=='Вопросы':
         bot.send_message(message.chat.id, 'Отлично, а вот и они!')
+        printing_func()
         for k, v in today.items():
             bot.send_message(message.chat.id, '{}:\n{}'.format(k,v))
+            printing_func()
         menu(message, 'circle')
     else:
         bot.send_message(message.chat.id, 'Ну как хочешь!')
         menu(message, 'circle')
+
+def cron_func():
+    print ('Croniiiiee')
+    userlist = backend.get_users()
+    userlist = [x[0] for x in userlist]
+    print(userlist)
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    keyboard.add(telebot.types.KeyboardButton('Да'), telebot.types.KeyboardButton('Нет'))
+    for user in userlist:
+        bot.send_message(user, 'Время повторения! Ты готов?', reply_markup=keyboard)
 
 
 def runBot():
     bot.polling(none_stop=True, interval=0)
 
 def runSchedulers():
-    schedule.every().day.at('04:00').do(backend.archieve).tag(backend.archieve.__name__)
-    schedule.every(1).hour.do(cron_func).tag(cron_func.__name__)
+    schedule.every(20).minutes.do(cron_func).tag(cron_func.__name__)
     while True:
         schedule.run_pending()
         time.sleep(1)
