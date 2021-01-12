@@ -60,6 +60,25 @@ class Database():
                                        'Select send_at from schedule where user_id = ? and theme_id = ? and send_at >= current_date',  params= (user_id, theme_id),type=  'reading')
         return [x[0] for x in theme_schedule]
 
+    def get_reminder_time(self, user_id):
+        reminder = Database.make_query(self, self.db_name,
+                                     'Select remainder_time from user where user_id = ? limit 1',
+                                     (user_id,),
+                                     'reading')
+        print(reminder)
+        if len(reminder) > 0:
+            return {'user_id': user_id,
+                "reminder_time": reminder[0][0]
+                }
+        else:
+            return reminder
+
+    def set_remainder_time(self, user_id, reminder_time):
+        Database.make_query(self, self.db_name, 'INSERT INTO user (user_id, created_at, remainder_time) VALUES (?, current_timestamp, ?);' ,
+                            (user_id, reminder_time), 'insert', Database.users)
+        print('Reminder is set, master')
+
+
     def add_theme(self, user_id, theme, questions, theory, schedule):
         schedule=re.sub('[^\d]', '-', schedule)
         theme_id = Database.make_query(self, self.db_name,
@@ -157,9 +176,11 @@ if __name__ == "__main__":
     # print(t.read_schedule(1, 1, 1))
     # print(t.read_schedule(1, 2))
     #t.edit_theme(1, 1, 'zzzzz', 'yoyoy', 'fffffffff')
-    # #print(t.read_schedule(1,1,1)[0])
+    # #print(t.read_schedule(1,1,1)[0])475098368
     # #print(t.reminder(1), len(t.reminder(1)))
     #t.delete_theme(475098368, 3)
     t.reminder(475098368)
+    #t.set_remainder_time(475098368, '21:45')
+    t.get_reminder_time(475098368)
     # t.delete_theme(2,1)
 

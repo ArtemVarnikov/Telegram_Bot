@@ -4,6 +4,7 @@ import theory
 import time
 import schedule
 import threading
+import re
 
 backend= bd_sql.Database(r'D:\Downloads\testbd.db')
 
@@ -216,7 +217,38 @@ def add_final(message, new_theme):
         'Готово! Теперь у темы {} нет шансов быть забытой'.format(new_theme['theme'].capitalize()
         )
     )
-    menu(message, type='circle')
+    if len(backend.get_reminder_time(message.from_user.id)) > 0:
+        menu(message, type='circle')
+    else:
+        keyboard = pass_button()
+        bot.send_message(
+            message.chat.id,
+            'Друг! Давай решим, в какое время я буду напоминать тебе, что пришло время повторений!.\n' +
+            'Введи время в формате hh:mm или нажним Пропустить (тогда буду писать тебе в 20:00)', reply_markup=keyboard
+        )
+        bot.register_next_step_handler(message, add_reminder)
+
+def add_reminder(message):
+    printing_func()
+    reminder_time=''
+    if message.text == 'Пропустить':
+        reminder_time = '20:00'
+        backend.set_remainder_time(message.chat.id, reminder_time)
+        bot.send_message(message.chat.id, 'Отлично, напомню ровно в срок!')
+        printing_func()
+        menu(message, type='circle')
+    elif re.match('[0-2][0-9]:[0-5][0-9]', message.text) is not None:
+        reminder_time = message.text
+        backend.set_remainder_time(message.chat.id, reminder_time)
+        bot.send_message(message.chat.id, 'Отлично, напомню ровно в срок!')
+        printing_func()
+        menu(message, type='circle')
+    else:
+        keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=1)
+        keyboard.add(telebot.types.KeyboardButton('Меню'))
+        bot.send_message(message.chat.id, 'Некорректный формат, попробуй еще раз', reply_markup=keyboard)
+        bot.register_next_step_handler(message, try_again, add_reminder)
+
 
 
 def read_command(message):
