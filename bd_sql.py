@@ -74,6 +74,7 @@ class Database():
             return reminder
 
     def set_remainder_time(self, user_id, reminder_time):
+        Database.make_query(self, self.db_name, 'DELETE FROM user where user_id = ?', (user_id,) , 'delete', Database.users)
         Database.make_query(self, self.db_name, 'INSERT INTO user (user_id, created_at, remainder_time) VALUES (?, current_timestamp, ?);' ,
                             (user_id, reminder_time), 'insert', Database.users)
         print('Reminder is set, master')

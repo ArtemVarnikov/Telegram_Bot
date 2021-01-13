@@ -230,7 +230,6 @@ def add_final(message, new_theme):
 
 def add_reminder(message):
     printing_func()
-    reminder_time=''
     if message.text == 'Пропустить':
         reminder_time = '20:00'
         backend.set_remainder_time(message.chat.id, reminder_time)
@@ -357,31 +356,43 @@ def edit_command(message):
     get_data = ''
     for theme in backend.get_data(message.from_user.id)[0]:
         get_data += '{} - {}\n'.format(theme[0], theme[1])
+    bot.send_message(message.chat.id, 'Мы можем изменить информацию по заданной теме или выбрать новое время напоминаний!' )
+    printing_func()
     keyboard = menu_button()
     bot.send_message(message.chat.id, 'Вот все темы, которые у нас есть:\n' + get_data)
     printing_func()
-    bot.send_message(message.chat.id, 'Что редактировать будем? Введи номер темы',reply_markup=keyboard)
+    bot.send_message(message.chat.id, 'Что редактировать будем?\nВведи номер темы или 1000 для смены времени напоминалок',reply_markup=keyboard)
     bot.register_next_step_handler(message, edit_theme)
 
 def edit_theme(message):
     if to_menu(message):
         return
-    printing_func()
-    keyboard = pass_button()
-    try:
-        theme=int(message.text)
+    if message.text =='1000':
+        printing_func()
+        keyboard = pass_button()
+        bot.send_message(
+            message.chat.id,
+            'Друг! Давай решим, в какое время я буду напоминать тебе, что пришло время повторений!.\n' +
+            'Введи время в формате hh:mm или нажним Пропустить (тогда буду писать тебе в 20:00)', reply_markup=keyboard
+        )
+        bot.register_next_step_handler(message, add_reminder)
+    else:
+        printing_func()
+        keyboard = pass_button()
         try:
-            current_info=backend.get_theme(message.from_user.id, theme)
-            bot.send_message(message.chat.id, 'Введи новое название для темы {}'.format(current_info['theme']),
-                             reply_markup=keyboard)
-            bot.register_next_step_handler(message, edit_questions, current_info)
-        except:
-            bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз', reply_markup=keyboard)
-            bot.register_next_step_handler(message, try_again, edit_theme)
+            theme=int(message.text)
+            try:
+                current_info=backend.get_theme(message.from_user.id, theme)
+                bot.send_message(message.chat.id, 'Введи новое название для темы {}'.format(current_info['theme']),
+                                 reply_markup=keyboard)
+                bot.register_next_step_handler(message, edit_questions, current_info)
+            except:
+                bot.send_message(message.chat.id, 'Не нашел тему с таким номером, попробуй еще раз', reply_markup=keyboard)
+                bot.register_next_step_handler(message, try_again, edit_theme)
 
-    except:
-        bot.send_message(message.chat.id, 'Цифрой, пожалуйста')
-        bot.register_next_step_handler(message, try_again, edit_theme)
+        except:
+            bot.send_message(message.chat.id, 'Цифрой, пожалуйста')
+            bot.register_next_step_handler(message, try_again, edit_theme)
 
 def edit_questions(message, current_info):
     if to_menu(message):

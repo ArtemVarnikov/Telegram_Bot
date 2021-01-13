@@ -32,8 +32,10 @@
 
 
 
-st= ''
-l=[1,2,3]
-l= tuple(l)
-print(type(st + str(l)))
-print(str(l))
+
+
+import re
+
+
+x= re.match('([0-2][0-9]:[0-5][0-9])', '31:59')
+print(x is not None)
