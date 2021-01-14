@@ -504,21 +504,20 @@ def today_questions(message, today):
         menu(message, 'circle')
 
 def cron_func():
-    print ('Croniiiiee')
     userlist = backend.get_users()
     userlist = [x[0] for x in userlist]
-    print(userlist)
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
     keyboard.add(telebot.types.KeyboardButton('Да'), telebot.types.KeyboardButton('Нет'))
     for user in userlist:
-        bot.send_message(user, 'Время повторения! Ты готов?', reply_markup=keyboard)
+        if backend.check_reminder_time(user):
+            bot.send_message(user, 'Время повторения! Ты готов?', reply_markup=keyboard)
 
 
 def runBot():
     bot.polling(none_stop=True, interval=0)
 
 def runSchedulers():
-    schedule.every(20).minutes.do(cron_func).tag(cron_func.__name__)
+    schedule.every(45).seconds.do(cron_func).tag(cron_func.__name__)
     while True:
         schedule.run_pending()
         time.sleep(1)

@@ -79,6 +79,13 @@ class Database():
                             (user_id, reminder_time), 'insert', Database.users)
         print('Reminder is set, master')
 
+    def check_reminder_time(self, user_id):
+        x = Database.make_query(self, self.db_name, "SELECT strftime('%H:%M',time('now', 'localtime')) = remainder_time  FROM user WHERE user_id = ? limit 1",
+                            (user_id, ) , 'reading', Database.users)[0][0]
+        if x == 1:
+            return True
+        else:
+            return False
 
     def add_theme(self, user_id, theme, questions, theory, schedule):
         schedule=re.sub('[^\d]', '-', schedule)
