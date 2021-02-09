@@ -6,10 +6,12 @@ import schedule
 import threading
 import re
 
-backend= bd_sql.Database(r'D:\Downloads\testbd.db')
 
 
-bot = telebot.TeleBot('995622302:AAHzpN0DOglWKCx7lPgrCpWWml_bxgKIs10')
+backend= bd_sql.Database(r'{}'.format(bd_sql.config['bd']))
+
+
+bot = telebot.TeleBot(bd_sql.config['token'])
 
 
 def menu_keyboard():
@@ -482,17 +484,19 @@ def today_command(message):
     today=backend.reminder(message.from_user.id)
     if len(today)==0:
         bot.send_message(message.chat.id, 'Нечего повторять! Приходи завтра!')
-        return
-    today_str=''
-    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
-    keyboard.add(telebot.types.KeyboardButton('Вопросы'), telebot.types.KeyboardButton('\U0001F519 Меню'))
-    for s in today.keys():
         printing_func()
-        today_str+= s + '\n'
-    bot.send_message(message.chat.id, 'Вот темы, которые мы будем сегодня повторять:\n' + today_str )
-    printing_func()
-    bot.send_message(message.chat.id, 'Если готов к вопросам, то нажми на кнопку Вопросы', reply_markup=keyboard)
-    bot.register_next_step_handler(message, today_questions, today)
+        menu(message, 'circle')
+    else:
+        today_str=''
+        keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+        keyboard.add(telebot.types.KeyboardButton('Вопросы'), telebot.types.KeyboardButton('\U0001F519 Меню'))
+        for s in today.keys():
+            printing_func()
+            today_str+= s + '\n'
+        bot.send_message(message.chat.id, 'Вот темы, которые мы будем сегодня повторять:\n' + today_str )
+        printing_func()
+        bot.send_message(message.chat.id, 'Если готов к вопросам, то нажми на кнопку Вопросы', reply_markup=keyboard)
+        bot.register_next_step_handler(message, today_questions, today)
 
 
 def today_questions(message, today):

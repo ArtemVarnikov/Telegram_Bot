@@ -3,8 +3,15 @@ import datetime
 import re
 import sqlite3
 from datetime import datetime, timedelta, date
+import logging
+import yaml
 
 
+with open('config.yaml') as f:
+    config = yaml.safe_load(f)
+
+logging.basicConfig(filename=config['log'], level=logging.INFO)
+current_date = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 class Database():
     users= 'user'
@@ -15,32 +22,44 @@ class Database():
         conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
         cursor.execute(query, params)
+        res = print('')
         if type == 'reading':
             res = cursor.fetchall()
         elif type == 'insert':
             conn.commit()
-            res = print('Данные добавлены в {}'.format(table_name))
+            logging.info('{} Данные добавлены в {}'.format(current_date, table_name))
         elif type == 'delete':
             conn.commit()
-            res = print('Данные удалены из {}'.format(table_name))
+            logging.info('{} Данные удалены из {}'.format(current_date, table_name))
         elif type == 'edit':
             conn.commit()
-            res = print('Данные в {} изменены'.format(table_name))
+            logging.info('{} Данные в {} изменены'.format(current_date, table_name))
         conn.close()
         return res
 
     def __init__(self, db_name):
         self.db_name = db_name
-
+        logging.info(f'{current_date} Database initialized')
 
     def get_data(self, user_id):
         user_themes= Database.make_query(self, self.db_name,
-                                       'Select theme_id, theme, questions, theory from themes where user_id = ?', params =(user_id,), type= 'reading')
+                                       '''
+                                       Select theme_id, theme, questions, theory 
+                                       from themes 
+                                       where user_id = ? 
+                                       and theme_id in (
+                                            select theme_id from schedule where send_at >= current_date 
+                                       )
+                                       ''',
+                                         params =(user_id,), type= 'reading')
         user_schedule=Database.make_query(self, self.db_name,
-                                       'Select theme_id, theme, send_at from schedule where user_id = ?',  params= (user_id,),type=  'reading')
+                                       'Select theme_id, theme, send_at from schedule where user_id = ? and send_at >= current_date'
+                                          ,  params= (user_id,),type=  'reading')
+        logging.info(f'{current_date} Query Get Data about user {user_id}')
         return user_themes, user_schedule
 
     def get_users(self):
+        logging.info(f'{current_date} Query GET ALL USERS executed')
         return Database.make_query(self, self.db_name,
                                        'Select user_id from user', (), type ='reading')
 
@@ -48,7 +67,7 @@ class Database():
         themes=Database.make_query(self, self.db_name,
                                        'Select * from themes where user_id = ? and theme_id = ? limit 1', (user_id, theme_id),
                                           'reading')
-        print(themes)
+        logging.info(f'{current_date} Query GET THEME {theme_id} for user {user_id} executed')
         return {'user_id' : user_id,
                 "theme_id":theme_id,
                 "theme": themes[0][3],
@@ -58,6 +77,7 @@ class Database():
     def get_theme_schedule(self, user_id, theme_id):
         theme_schedule=Database.make_query(self, self.db_name,
                                        'Select send_at from schedule where user_id = ? and theme_id = ? and send_at >= current_date',  params= (user_id, theme_id),type=  'reading')
+        logging.info(f'{current_date} Query GET THEME {theme_id} schedule executed for user {user_id}')
         return [x[0] for x in theme_schedule]
 
     def get_reminder_time(self, user_id):
@@ -65,7 +85,7 @@ class Database():
                                      'Select remainder_time from user where user_id = ? limit 1',
                                      (user_id,),
                                      'reading')
-        print(reminder)
+        logging.info(f'{current_date} Query  GET REMINDER TIME executed for user {user_id}')
         if len(reminder) > 0:
             return {'user_id': user_id,
                 "reminder_time": reminder[0][0]
@@ -77,11 +97,13 @@ class Database():
         Database.make_query(self, self.db_name, 'DELETE FROM user where user_id = ?', (user_id,) , 'delete', Database.users)
         Database.make_query(self, self.db_name, 'INSERT INTO user (user_id, created_at, remainder_time) VALUES (?, current_timestamp, ?);' ,
                             (user_id, reminder_time), 'insert', Database.users)
+        logging.info(f'{current_date} Query  SET REMINDER TIME executed for user {user_id}. Reminder time set for {reminder_time}')
         print('Reminder is set, master')
 
     def check_reminder_time(self, user_id):
         x = Database.make_query(self, self.db_name, "SELECT strftime('%H:%M',time('now', 'localtime')) = remainder_time  FROM user WHERE user_id = ? limit 1",
                             (user_id, ) , 'reading', Database.users)[0][0]
+        logging.info(f'{current_date} Query  CHECK REMINDER TIME executed for user {user_id}. X == {x}')
         if x == 1:
             return True
         else:
