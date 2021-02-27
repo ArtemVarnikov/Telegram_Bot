@@ -475,6 +475,7 @@ def delete_theme(message):
 
 
 def today_command(user_id):
+    global user_id
     printing_func()
     today=backend.reminder(user_id)
     keyboard = menu_button()
