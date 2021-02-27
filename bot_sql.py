@@ -474,8 +474,9 @@ def delete_theme(message):
         bot.register_next_step_handler(message, try_again, edit_theme)
 
 
-def today_command(user_id):
+def today_command(user):
     global user_id
+    user_id = user
     printing_func()
     today=backend.reminder(user_id)
     keyboard = menu_button()
