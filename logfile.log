@@ -1,0 +1,9 @@
+INFO:root:2021-02-27 17:38 Database initialized
+INFO:schedule:Running job Every 45 seconds do cron_func() (last run: [never], next run: 2021-02-27 17:39:42)
+INFO:root:2021-02-27 17:39 Query GET ALL USERS executed
+INFO:root:2021-02-27 17:39 Query  CHECK REMINDER TIME executed for user 475098368. X == 0
+INFO:schedule:Running job Every 45 seconds do cron_func() (last run: 2021-02-27 17:39:42, next run: 2021-02-27 17:40:27)
+INFO:root:2021-02-27 17:40 Query GET ALL USERS executed
+INFO:root:2021-02-27 17:40 Query  CHECK REMINDER TIME executed for user 475098368. X == 0
+INFO:root:2021-02-27 17:40 Query Get Data about user 475098368
+INFO:root:2021-02-27 17:40 Query Get Data about user 475098368
