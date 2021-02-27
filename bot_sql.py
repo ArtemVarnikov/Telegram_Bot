@@ -59,7 +59,7 @@ def to_menu(message): #helper method
 
 
 
-@bot.message_handler(regexp='[^Да]')
+@bot.message_handler()
 def menu(message, type=None):
     global user_id
     user_id=message.chat.id
@@ -97,7 +97,7 @@ def next_action(message):
     elif message.text == '\U0001F3C1 delete':
         delete_command(message)
     elif message.text == '\U0001F4DA today':
-        today_command(message)
+        today_command(message.from_user.id)
     elif message.text == '\U0001F64B Пока, друг!':
         bot.send_message(message.from_user.id, 'Отлично поболтали!')
         return
@@ -473,45 +473,23 @@ def delete_theme(message):
         bot.send_message(message.chat.id, 'Цифрой, пожалуйста', reply_markup=keyboard)
         bot.register_next_step_handler(message, try_again, edit_theme)
 
-@bot.message_handler(regexp='Да')
-def today_command(message):
-    global user_id
-    user_id = message.chat.id
-    if to_menu(message):
-        return
+
+def today_command(user_id):
+
     printing_func()
-    today=backend.reminder(message.from_user.id)
+    today=backend.reminder(user_id)
+    keyboard = menu_button()
     if len(today)==0:
-        bot.send_message(message.chat.id, 'Нечего повторять! Приходи завтра!')
-        printing_func()
-        menu(message, 'circle')
+        bot.send_message(user_id, 'Нечего повторять! Приходи завтра!', reply_markup=keyboard)
+
     else:
-        today_str=''
-        keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
-        keyboard.add(telebot.types.KeyboardButton('Вопросы'), telebot.types.KeyboardButton('\U0001F519 Меню'))
-        for s in today.keys():
-            printing_func()
-            today_str+= s + '\n'
-        bot.send_message(message.chat.id, 'Вот темы, которые мы будем сегодня повторять:\n' + today_str )
-        printing_func()
-        bot.send_message(message.chat.id, 'Если готов к вопросам, то нажми на кнопку Вопросы', reply_markup=keyboard)
-        bot.register_next_step_handler(message, today_questions, today)
-
-
-def today_questions(message, today):
-    if to_menu(message):
-        return
-    printing_func()
-    if message.text=='Вопросы':
-        bot.send_message(message.chat.id, 'Отлично, а вот и они!')
         printing_func()
         for k, v in today.items():
-            bot.send_message(message.chat.id, '{}:\n{}'.format(k,v))
+            bot.send_message(user_id, '{}:\n{}'.format(k, v), reply_markup=keyboard)
             printing_func()
-        menu(message, 'circle')
-    else:
-        bot.send_message(message.chat.id, 'Ну как хочешь!')
-        menu(message, 'circle')
+
+
+
 
 def cron_func():
     userlist = backend.get_users()
@@ -520,7 +498,7 @@ def cron_func():
     keyboard.add(telebot.types.KeyboardButton('Да'), telebot.types.KeyboardButton('Нет'))
     for user in userlist:
         if backend.check_reminder_time(user):
-            bot.send_message(user, 'Время повторения! Ты готов?', reply_markup=keyboard)
+            today_command(user)
 
 
 def runBot():
