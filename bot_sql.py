@@ -475,15 +475,14 @@ def delete_theme(message):
 
 
 def today_command(user_id):
-
     printing_func()
     today=backend.reminder(user_id)
     keyboard = menu_button()
     if len(today)==0:
         bot.send_message(user_id, 'Нечего повторять! Приходи завтра!', reply_markup=keyboard)
-
     else:
         printing_func()
+        bot.send_message(user_id, 'Вот темы, которые мы будем сегодня повторять:\n')
         for k, v in today.items():
             bot.send_message(user_id, '{}:\n{}'.format(k, v), reply_markup=keyboard)
             printing_func()
