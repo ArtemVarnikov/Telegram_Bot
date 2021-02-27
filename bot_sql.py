@@ -59,7 +59,6 @@ def to_menu(message): #helper method
 
 
 
-
 @bot.message_handler(regexp='[^Да]')
 def menu(message, type=None):
     global user_id
